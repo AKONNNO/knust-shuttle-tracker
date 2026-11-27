@@ -88,7 +88,7 @@ export default function Driver() {
       .eq("id", myBus.id)
       .maybeSingle()
       .then(({ data }) => {
-        const geom = data?.routes?.geometry ?? null;
+        const geom = (data?.routes as unknown as { geometry: unknown } | null)?.geometry ?? null;
         if (geom) {
           updateRoutes(map, routeFeatures([{ geometry: geom as never, color: routeColor(0) }]));
         }

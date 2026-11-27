@@ -1,7 +1,7 @@
 // Admin-only: create a driver user account (email confirmed) and set role='driver'.
 // verify_jwt is false, so we verify the caller's JWT + admin role ourselves.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/+esm";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
