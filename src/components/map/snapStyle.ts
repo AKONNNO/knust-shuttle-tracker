@@ -4,7 +4,10 @@
 // data). Override the whole style via VITE_MAP_STYLE_URL if preferred.
 import type { StyleSpecification } from "maplibre-gl";
 
-const TILES = ["https://tiles.openfreemap.org/tiles/{z}/{x}/{y}"];
+// Use OpenFreeMap's documented TileJSON endpoint (https://tiles.openfreemap.org/planet)
+// rather than a hand-rolled tile template, so MapLibre resolves the canonical
+// {z}/{x}/{y} tile URLs itself.
+const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
 const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}";
 
 export const snapStyle: StyleSpecification = {
@@ -12,7 +15,7 @@ export const snapStyle: StyleSpecification = {
   name: "KNUST Snap Map",
   glyphs: GLYPHS,
   sources: {
-    openmaptiles: { type: "vector", tiles: TILES, maxzoom: 14 },
+    openmaptiles: { type: "vector", url: TILEJSON_URL, maxzoom: 14 },
   },
   layers: [
     { id: "bg", type: "background", paint: { "background-color": "#F7F1E5" } },

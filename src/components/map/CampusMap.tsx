@@ -28,16 +28,25 @@ interface CampusMapProps {
 export function CampusMap({ onReady, onClick, center, className, dragRotate = true, cursor = "default" }: CampusMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const readyFired = useRef(false);
+
+  // Latest prop values are read through refs so callbacks (which parents
+  // redefine on every render) never trigger a map rebuild.
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const onClickRef = useRef(onClick);
   onClickRef.current = onClick;
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
+  // Construction-only option; captured once at mount.
+  const dragRotateRef = useRef(dragRotate);
 
+  // Create the map exactly once (mount-only), regardless of prop churn.
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container,
       style: overrideStyle || snapStyle,
       center: [CAMPUS_CENTER.lng, CAMPUS_CENTER.lat],
       zoom: DEFAULT_ZOOM,
@@ -46,8 +55,8 @@ export function CampusMap({ onReady, onClick, center, className, dragRotate = tr
       minZoom: DEFAULT_MIN_ZOOM,
       maxZoom: DEFAULT_MAX_ZOOM,
       maxBounds: CAMPUS_BOUNDS,
-      dragRotate,
-      pitchWithRotate: dragRotate,
+      dragRotate: dragRotateRef.current,
+      pitchWithRotate: dragRotateRef.current,
       attributionControl: false,
       canvasContextAttributes: { antialias: true },
     });
@@ -55,28 +64,30 @@ export function CampusMap({ onReady, onClick, center, className, dragRotate = tr
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
-      if (!readyFired.current) {
-        readyFired.current = true;
-        onReadyRef.current(map);
-      }
+      const canvas = map.getCanvas();
+      if (canvas) canvas.style.cursor = cursorRef.current;
+      onReadyRef.current(map);
     });
-    if (onClick) {
-      map.on("click", (e) => {
-        if (!e?.lngLat) return;
-        onClickRef.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat });
-      });
-    }
-    const styleTouched = () => {
-      if (cursor && map.getCanvas()) map.getCanvas().style.cursor = cursor;
-    };
-    map.on("mousemove", styleTouched);
+    map.on("click", (e) => {
+      if (!e?.lngLat) return;
+      onClickRef.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+    });
     map.easeTo({ bearing: DEFAULT_BEARING });
 
     return () => {
       map.remove();
       mapRef.current = null;
     };
-  }, [onClick, dragRotate, cursor]);
+    // Intentionally mount-only: prop changes (onClick, cursor….) are handled
+    // via refs above and must not destroy/recreate the WebGL canvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the cursor style in sync without rebuilding the map.
+  useEffect(() => {
+    const canvas = mapRef.current?.getCanvas();
+    if (canvas) canvas.style.cursor = cursor;
+  }, [cursor]);
 
   const firstCenter = useRef(center);
   useEffect(() => {
