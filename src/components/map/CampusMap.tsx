@@ -1,23 +1,23 @@
 import { useEffect, useRef } from "react";
-import * as maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   CAMPUS_BOUNDS,
   CAMPUS_CENTER,
-  DEFAULT_BEARING,
   DEFAULT_MAX_ZOOM,
   DEFAULT_MIN_ZOOM,
-  DEFAULT_PITCH,
   DEFAULT_ZOOM,
 } from "@/lib/constants";
-import { snapStyle } from "./snapStyle";
 
-const overrideStyle = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim();
+// Warm, keyless raster base (CARTO Voyager). Override with VITE_MAP_TILE_URL.
+const DEFAULT_TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim() || DEFAULT_TILE_URL;
 
 export type MapClickHandler = (lngLat: { lng: number; lat: number }) => void;
 
 interface CampusMapProps {
-  onReady: (map: maplibregl.Map) => void;
+  /** Called with the underlying Leaflet map as soon as it is created. */
+  onReady: (map: L.Map) => void;
   onClick?: MapClickHandler;
   center?: { lng: number; lat: number } | null;
   className?: string;
@@ -25,68 +25,74 @@ interface CampusMapProps {
   cursor?: string;
 }
 
-export function CampusMap({ onReady, onClick, center, className, dragRotate = true, cursor = "default" }: CampusMapProps) {
+export function CampusMap({ onReady, onClick, center, className, cursor = "default" }: CampusMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
-  // Latest prop values are read through refs so callbacks (which parents
-  // redefine on every render) never trigger a map rebuild.
+  // Latest prop values read through refs so parents re-defining callbacks on
+  // every render never trigger a map rebuild.
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const onClickRef = useRef(onClick);
   onClickRef.current = onClick;
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
-  // Construction-only option; captured once at mount.
-  const dragRotateRef = useRef(dragRotate);
 
   // Create the map exactly once (mount-only), regardless of prop churn.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || mapRef.current) return;
 
-    const map = new maplibregl.Map({
-      container,
-      style: overrideStyle || snapStyle,
-      center: [CAMPUS_CENTER.lng, CAMPUS_CENTER.lat],
+    const map = L.map(container, {
+      center: [CAMPUS_CENTER.lat, CAMPUS_CENTER.lng],
       zoom: DEFAULT_ZOOM,
-      pitch: DEFAULT_PITCH,
-      bearing: DEFAULT_BEARING,
       minZoom: DEFAULT_MIN_ZOOM,
       maxZoom: DEFAULT_MAX_ZOOM,
-      maxBounds: CAMPUS_BOUNDS,
-      dragRotate: dragRotateRef.current,
-      pitchWithRotate: dragRotateRef.current,
-      attributionControl: false,
-      canvasContextAttributes: { antialias: true },
+      zoomSnap: 0.5,
+      zoomControl: false,
+      attributionControl: true,
+      maxBounds: L.latLngBounds(
+        [CAMPUS_BOUNDS[0][1], CAMPUS_BOUNDS[0][0]],
+        [CAMPUS_BOUNDS[1][1], CAMPUS_BOUNDS[1][0]]
+      ),
+      maxBoundsViscosity: 0.8,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
-    map.on("load", () => {
-      const canvas = map.getCanvas();
-      if (canvas) canvas.style.cursor = cursorRef.current;
-      onReadyRef.current(map);
-    });
+    L.tileLayer(tileUrl, {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(map);
+
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    const el = map.getContainer();
+    if (el) el.style.cursor = cursorRef.current;
+
     map.on("click", (e) => {
-      if (!e?.lngLat) return;
-      onClickRef.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+      onClickRef.current?.({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
-    map.easeTo({ bearing: DEFAULT_BEARING });
+
+    // Notify immediately so consumers can add their layers right away (we
+    // don't depend on tile fetch completing).
+    onReadyRef.current(map);
+    requestAnimationFrame(() => map.invalidateSize());
 
     return () => {
       map.remove();
       mapRef.current = null;
     };
-    // Intentionally mount-only: prop changes (onClick, cursor….) are handled
-    // via refs above and must not destroy/recreate the WebGL canvas.
+    // Intentionally mount-only: prop changes (onClick, cursor…) are handled
+    // via refs above and must not destroy/recreate the map.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep the cursor style in sync without rebuilding the map.
   useEffect(() => {
-    const canvas = mapRef.current?.getCanvas();
-    if (canvas) canvas.style.cursor = cursor;
+    const el = mapRef.current?.getContainer();
+    if (el) el.style.cursor = cursor;
   }, [cursor]);
 
   const firstCenter = useRef(center);
@@ -95,14 +101,13 @@ export function CampusMap({ onReady, onClick, center, className, dragRotate = tr
     if (!map || !center) return;
     const isInitial = firstCenter.current === center;
     firstCenter.current = center;
-    map.flyTo({
-      center: [center.lng, center.lat],
-      zoom: Math.max(map.getZoom(), 16),
-      pitch: map.getPitch(),
-      bearing: map.getBearing(),
-      essential: true,
-      duration: isInitial ? 0 : 1400,
-    });
+    if (isInitial) {
+      map.setView([center.lat, center.lng], Math.max(map.getZoom(), DEFAULT_ZOOM), {
+        animate: false,
+      });
+    } else {
+      map.flyTo([center.lat, center.lng], Math.max(map.getZoom(), 16));
+    }
   }, [center]);
 
   return <div ref={containerRef} className={className ?? "h-full w-full"} />;
