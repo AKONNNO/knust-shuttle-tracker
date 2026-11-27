@@ -128,9 +128,6 @@ importers:
       lucide-react:
         specifier: ^0.462.0
         version: 0.462.0(react@19.2.3)
-      maplibre-gl:
-        specifier: ^6.19.0
-        version: 6.19.0(@types/react@19.2.8)(react@19.2.3)
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
