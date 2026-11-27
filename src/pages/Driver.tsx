@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type * as L from "leaflet";
+import * as L from "leaflet";
 import {
   Bus as BusIcon,
   CirclePower,
@@ -24,9 +24,9 @@ import { addRouteLayers, updateRoutes } from "@/components/map/mapLayers";
 import { addOrUpdateSource, routeFeatures } from "@/components/map/sources";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatDistance, formatDuration } from "@/lib/geo";
+import { formatDistance, formatDuration, routeNetworkBounds } from "@/lib/geo";
 import { routeColor } from "@/lib/routeColors";
-import type { Trip } from "@/lib/types";
+import type { LineGeometry, Trip } from "@/lib/types";
 
 interface HistoryTrip extends Trip {
   buses: { name: string } | null;
@@ -88,9 +88,16 @@ export default function Driver() {
       .eq("id", myBus.id)
       .maybeSingle()
       .then(({ data }) => {
-        const geom = (data?.routes as unknown as { geometry: unknown } | null)?.geometry ?? null;
+        const geom = (data?.routes as unknown as { geometry: LineGeometry | null } | null)?.geometry ?? null;
         if (geom) {
           updateRoutes(map, routeFeatures([{ geometry: geom as never, color: routeColor(0) }]));
+          // Keep the map pinned to the designated route corridor.
+          const box = routeNetworkBounds([geom], []);
+          if (box) {
+            const bounds = L.latLngBounds(box.sw, box.ne).pad(0.2);
+            map.setMaxBounds(bounds);
+            map.flyToBounds(bounds, { maxZoom: 15.4 });
+          }
         }
       });
   }, [map, myBus]);

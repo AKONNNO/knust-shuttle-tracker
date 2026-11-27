@@ -76,6 +76,19 @@ export interface LiveBus extends Bus {
   drivers: Pick<Profile, "id" | "full_name"> | null;
 }
 
+/** A live bus with its route's stops attached in position order (for ETA math). */
+export type LiveBusWithStops = LiveBus & { routesStopsSorted: Stop[] };
+
+/** A student remark / comment on a specific ride (bus). */
+export interface RideComment {
+  id: string;
+  bus_id: string;
+  user_id: string;
+  author_name: string | null;
+  body: string;
+  created_at: string;
+}
+
 export interface RouteWithStops extends Route {
   stops: Array<Stop & { route_stops: { position: number } }>;
 }

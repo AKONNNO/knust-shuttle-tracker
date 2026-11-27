@@ -119,9 +119,15 @@ export function addStopLayers(map: L.Map) {
   groupFor(map, "stops-labels");
 }
 
+export interface StopLayerOptions {
+  /** Fired when a stop marker is tapped. */
+  onStopClick?: (stop: Stop) => void;
+}
+
 export function updateStops(
   map: L.Map,
-  stops: Array<Stop & { selected?: boolean }>
+  stops: Array<Stop & { selected?: boolean }>,
+  opts: StopLayerOptions = {}
 ) {
   const dotGroup = groupFor(map, "stops");
   const labelGroup = groupFor(map, "stops-labels");
@@ -131,18 +137,25 @@ export function updateStops(
   for (const s of stops) {
     const ll: [number, number] = [s.lat, s.lng];
     L.circleMarker(ll, {
-      radius: 7,
+      radius: s.selected ? 8 : 7,
       color: s.selected ? "#E8A33D" : "#2E7D4F",
       weight: s.selected ? 5 : 3,
       fillColor: "#FFFFFF",
       fillOpacity: 1,
-      interactive: false,
+      interactive: true,
+      keyboard: false,
       className: "sd-stop-dot",
-    }).addTo(dotGroup);
+    })
+      .addTo(dotGroup)
+      .on("click", () => opts.onStopClick?.(s));
     L.marker(ll, {
       icon: stopLabelIcon(s.name, !!s.selected),
-      interactive: false,
-    }).addTo(labelGroup);
+      interactive: true,
+      keyboard: false,
+      title: s.name,
+    })
+      .addTo(labelGroup)
+      .on("click", () => opts.onStopClick?.(s));
   }
 }
 

@@ -169,9 +169,71 @@ export function computeNextStop(
   };
 }
 
-function circularDistance(from: number, to: number, total: number): number {
+export function circularDistance(from: number, to: number, total: number): number {
   const d = (to - from + total) % total;
   return d >= 0 ? d : d + total;
+}
+
+export interface RouteTravel {
+  /** Remaining metres to travel along the route to reach `to`. */
+  remainingM: number;
+  /** True when a one-way bus has already passed the target point. */
+  passed: boolean;
+}
+
+/**
+ * Distance along a polyline from `from` to `to` (both projected onto the
+ * line). Loop routes wrap around; one-way routes return 0 for anything behind.
+ */
+export function routeTravelDistance(
+  from: TriPoint,
+  to: TriPoint,
+  line: TriPoint[],
+  isLoop: boolean
+): RouteTravel | null {
+  const fp = projectOnPolyline(from, line);
+  const tp = projectOnPolyline(to, line);
+  if (!fp || !tp) return null;
+  const total = totalLineLength(line);
+  if (isLoop) {
+    return {
+      remainingM: circularDistance(fp.alongDistance, tp.alongDistance, total),
+      passed: false,
+    };
+  }
+  const passed = fp.alongDistance > tp.alongDistance + 8; // 8m hysteresis
+  return { remainingM: Math.max(0, tp.alongDistance - fp.alongDistance), passed };
+}
+
+export interface LatLngBoundsBox {
+  sw: [number, number]; // [lat, lng]
+  ne: [number, number]; // [lat, lng]
+}
+
+/**
+ * Bounding box covering the whole route network (all route polylines + every
+ * stop). Used to keep the map locked to the designated campus routes.
+ */
+export function routeNetworkBounds(
+  geometries: Array<LineGeometry | null>,
+  stops: Stop[]
+): LatLngBoundsBox | null {
+  const pts: TriPoint[] = [];
+  for (const g of geometries) pts.push(...lineToPoints(g));
+  for (const s of stops) pts.push({ lat: s.lat, lng: s.lng });
+  if (pts.length < 2) return null;
+
+  let minLat = Infinity;
+  let minLng = Infinity;
+  let maxLat = -Infinity;
+  let maxLng = -Infinity;
+  for (const p of pts) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+  }
+  return { sw: [minLat, minLng], ne: [maxLat, maxLng] };
 }
 
 /** ETA seconds = metres / speed; falls back to a campus shuttle cruise speed. */

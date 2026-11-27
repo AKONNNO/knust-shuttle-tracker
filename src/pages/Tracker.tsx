@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type * as L from "leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as L from "leaflet";
 import { Compass, Crosshair, Bus as BusIcon, Route, LoaderCircle } from "lucide-react";
 import { useLiveBuses } from "@/hooks/useLiveBuses";
 import { useRoutes } from "@/hooks/useRoutes";
@@ -12,13 +12,20 @@ import { addOrUpdateSource, routeFeatures } from "@/components/map/sources";
 import { RouteFilter } from "@/components/tracker/RouteFilter";
 import { BusCard, type BusEtaInfo } from "@/components/tracker/BusCard";
 import { NearestStopCard } from "@/components/tracker/NearestStopCard";
+import { StopArrivals } from "@/components/tracker/StopArrivals";
+import { RideCommentsCard } from "@/components/tracker/RideCommentsCard";
 import { routeColor } from "@/lib/routeColors";
-import type { LiveBus, Stop } from "@/lib/types";
-import { computeNextStop, etaSeconds, formatDuration, lineToPoints } from "@/lib/geo";
+import type { LiveBusWithStops, Stop } from "@/lib/types";
+import {
+  computeNextStop,
+  etaSeconds,
+  formatDuration,
+  haversineMeters,
+  lineToPoints,
+  routeNetworkBounds,
+} from "@/lib/geo";
 import { Button } from "@/components/ui/button";
 import { CAMPUS_CENTER } from "@/lib/constants";
-
-type LiveBusWithStops = LiveBus & { routesStopsSorted: Stop[] };
 
 interface UpcomingStop {
   name: string;
@@ -64,11 +71,13 @@ export default function Tracker() {
   const { buses, locations, offline, loading } = useLiveBuses();
   const { routes, orderedStopsFor } = useRoutes();
   const { stops } = useStops();
-  const { position: me } = useGeolocation(false);
+  const { position: me } = useGeolocation(true);
   const [map, setMap] = useState<L.Map | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedBus, setSelectedBus] = useState<string | null>(null);
+  const [selectedStop, setSelectedStop] = useState<string | null>(null);
   const [fitRequested, setFitRequested] = useState(0);
+  const boundsAppliedRef = useRef(false);
 
   const colorFor = useMemo(() => {
     const m: Record<string, string> = {};
@@ -96,6 +105,26 @@ export default function Tracker() {
     [buses, orderedStopsFor]
   );
 
+  // Nearest stop from the user's location (falls back to a map-tapped stop).
+  const nearestStop = useMemo<Stop | null>(() => {
+    if (!me) return null;
+    let best: Stop | null = null;
+    let bestD = Infinity;
+    for (const s of stops) {
+      const d = haversineMeters({ lat: me.lat, lng: me.lng }, s);
+      if (d < bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    return best;
+  }, [me, stops]);
+
+  const arrivalsStop: Stop | null = useMemo(() => {
+    if (selectedStop) return stops.find((s) => s.id === selectedStop) ?? null;
+    return nearestStop;
+  }, [selectedStop, stops, nearestStop]);
+
   // Map layers for routes + stops (respect current route filter).
   useEffect(() => {
     if (!map) return;
@@ -112,8 +141,30 @@ export default function Tracker() {
     );
 
     const stopList = selectedRoute === null ? stops : orderedStopsFor(selectedRoute);
-    updateStops(map, stopList);
-  }, [map, routes, stops, selectedRoute, colorFor, orderedStopsFor]);
+    updateStops(
+      map,
+      stopList.map((s) => ({ ...s, selected: s.id === selectedStop })),
+      {
+        onStopClick: (s) => {
+          setSelectedStop((cur) => (cur === s.id ? null : s.id));
+          map.flyTo([s.lat, s.lng], Math.max(map.getZoom(), 16), { duration: 0.8 });
+        },
+      }
+    );
+  }, [map, routes, stops, selectedRoute, selectedStop, colorFor, orderedStopsFor]);
+
+  // Keep the view pinned to the designated route network (never anywhere else).
+  useEffect(() => {
+    if (!map || routes.length === 0) return;
+    const box = routeNetworkBounds(routes.map((r) => r.geometry), stops);
+    if (!box) return;
+    const bounds = L.latLngBounds(box.sw, box.ne).pad(0.14);
+    map.setMaxBounds(bounds);
+    if (!boundsAppliedRef.current) {
+      boundsAppliedRef.current = true;
+      map.fitBounds(bounds.pad(0.1), { animate: false, maxZoom: 15.4 });
+    }
+  }, [map, routes, stops]);
 
   // Own-location blue dot.
   useEffect(() => {
@@ -266,6 +317,8 @@ export default function Tracker() {
       <div className="mt-4 lg:mt-0 space-y-4 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
         <NearestStopCard stops={stops} routeNamesByStop={routesByStop} />
 
+        <StopArrivals stop={arrivalsStop} buses={busesWithStops} colorFor={colorFor} offline={offline} />
+
         {selectedBusObj && selectedBusObj.bus_locations && (
           <div className="rounded-2xl border border-primary/25 bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
@@ -305,6 +358,10 @@ export default function Tracker() {
               ))}
             </div>
           </div>
+        )}
+
+        {selectedBusObj && (
+          <RideCommentsCard bus={selectedBusObj} onClose={() => setSelectedBus(null)} />
         )}
 
         {/* Buses */}
