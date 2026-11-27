@@ -152,7 +152,9 @@ export default function Tracker() {
       .filter(Boolean)
       .map((l) => [l!.lat, l!.lng] as [number, number]);
     if (points.length) {
-      map.fitBounds(points, { padding: 64, maxZoom: 16.4 });
+      // Leaflet's fitBounds accepts arbitrary point lists at runtime; the
+      // narrow tuple type needs a cast for TS.
+      map.fitBounds(points as unknown as L.LatLngBoundsLiteral, { padding: 64, maxZoom: 16.4 });
       return;
     }
     map.flyTo([CAMPUS_CENTER.lat, CAMPUS_CENTER.lng], 15.2);

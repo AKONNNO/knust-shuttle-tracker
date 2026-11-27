@@ -66,7 +66,7 @@ export function CampusMap({ onReady, onClick, center, className, cursor = "defau
       maxZoom: 20,
     }).addTo(map);
 
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+    L.control.zoom({ position: "topright" }).addTo(map);
 
     const el = map.getContainer();
     if (el) el.style.cursor = cursorRef.current;
