@@ -17,8 +17,6 @@ export const CAMPUS_BOUNDS: [[number, number], [number, number]] = [
 export const DEFAULT_ZOOM = 15.3;
 export const DEFAULT_MIN_ZOOM = 14;
 export const DEFAULT_MAX_ZOOM = 18.5;
-export const DEFAULT_PITCH = 56;
-export const DEFAULT_BEARING = -12;
 
 /** A bus with no update within this window is considered offline. */
 export const OFFLINE_THRESHOLD_MS = 45_000;
