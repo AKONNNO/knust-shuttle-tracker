@@ -139,7 +139,7 @@ export function RouteEditor({ open, existing, stops, onClose, onSaved }: RouteEd
         [bounds.sw[1], bounds.sw[0]] as [number, number],
         [bounds.ne[1], bounds.ne[0]] as [number, number],
       ],
-      { padding: 48, maxZoom: 16.5 }
+      { padding: [48, 48], maxZoom: 16.5 }
     );
   };
 

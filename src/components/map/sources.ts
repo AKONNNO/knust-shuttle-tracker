@@ -23,6 +23,7 @@ export function groupFor(map: L.Map, id: string) {
 }
 
 export interface PointFeatureLike {
+  type: "Feature";
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: Record<string, unknown>;
 }

@@ -95,14 +95,17 @@ function addRouteArrows(group: L.LayerGroup, line: L.LatLng[]) {
 }
 
 export function updateRoutes(map: L.Map, featureCollection: FeatureCollection) {
-  const lines = featureCollection.features
-    .filter((f) => f.geometry.type === "LineString")
-    .map((f) => ({
-      latlngs: (f.geometry.coordinates as [number, number][]).map(
-        ([lng, lat]) => L.latLng(lat, lng) as L.LatLng
-      ),
-      color: (f.properties?.color as string | undefined) ?? "#E8A33D",
-    }));
+  const lines = featureCollection.features.flatMap((f) => {
+    if (f.geometry.type !== "LineString") return [];
+    return [
+      {
+        latlngs: (f.geometry.coordinates as [number, number][]).map(
+          ([lng, lat]) => L.latLng(lat, lng) as L.LatLng
+        ),
+        color: (f.properties?.color as string | undefined) ?? "#E8A33D",
+      },
+    ];
+  });
 
   const stored = lines.map((l) => l.latlngs) as L.LatLng[][] & { colors: string[] };
   stored.colors = lines.map((l) => l.color);
