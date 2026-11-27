@@ -1,9 +1,9 @@
-// Live bus layer: smooth interpolated marker movement + heading rotation.
+// Live bus layer: smooth interpolated marker movement + heading rotation,
+// rendered with Leaflet markers + glow dots.
 import { useEffect, useRef } from "react";
-import type * as maplibregl from "maplibre-gl";
+import * as L from "leaflet";
 import type { BusLocation } from "@/lib/types";
-import { BUS_ICON_SVG, ensureImage } from "./icons";
-import { addOrUpdateSource, busFeatures } from "./sources";
+import { busIcon } from "./icons";
 
 interface AnimatedPos {
   lat: number;
@@ -13,8 +13,15 @@ interface AnimatedPos {
   lastSeen: number;
 }
 
+interface BusMarkerSet {
+  marker: L.Marker;
+  glow: L.CircleMarker;
+  rotEl: HTMLElement | null;
+  markerEl: HTMLElement | null;
+}
+
 interface BusLayerProps {
-  map: maplibregl.Map;
+  map: L.Map;
   locations: Record<string, BusLocation>;
   offline: Record<string, boolean>;
 }
@@ -26,6 +33,7 @@ function lerpAngle(from: number, to: number, t: number) {
 
 export function BusLayer({ map, locations, offline }: BusLayerProps) {
   const positionsRef = useRef<Record<string, AnimatedPos>>({});
+  const markersRef = useRef<Record<string, BusMarkerSet>>({});
   const targetsRef = useRef(locations);
   const offlineRef = useRef(offline);
 
@@ -35,37 +43,7 @@ export function BusLayer({ map, locations, offline }: BusLayerProps) {
   }, [locations, offline]);
 
   useEffect(() => {
-    ensureImage(map, "bus-icon", BUS_ICON_SVG);
-    addOrUpdateSource(map, "buses", { type: "FeatureCollection", features: [] });
-    if (!map.getLayer("buses-glow")) {
-      map.addLayer({
-        id: "buses-glow",
-        type: "circle",
-        source: "buses",
-        paint: {
-          "circle-radius": 16,
-          "circle-color": "#107C41",
-          "circle-opacity": ["case", ["get", "offline"], 0.12, 0.28],
-          "circle-blur": 1,
-        },
-      });
-    }
-    if (!map.getLayer("buses-symbol")) {
-      map.addLayer({
-        id: "buses-symbol",
-        type: "symbol",
-        source: "buses",
-        layout: {
-          "icon-image": "bus-icon",
-          "icon-size": 0.85,
-          "icon-rotate": ["get", "heading"],
-          "icon-rotation-alignment": "map",
-          "icon-allow-overlap": true,
-        },
-        paint: { "icon-opacity": ["case", ["get", "offline"], 0.35, 1] },
-      });
-    }
-
+    const group = L.layerGroup().addTo(map);
     let cancelled = false;
     let raf = 0;
     let last = performance.now();
@@ -75,9 +53,11 @@ export function BusLayer({ map, locations, offline }: BusLayerProps) {
       const dt = Math.min((now - last) / 1000, 0.5);
       last = now;
       const positions = positionsRef.current;
+      const markers = markersRef.current;
       const targets = targetsRef.current;
       const off = offlineRef.current;
 
+      // Interpolate positions toward their targets.
       for (const [id, pos] of Object.entries(positions)) {
         const target = targets[id];
         if (!target) {
@@ -92,28 +72,56 @@ export function BusLayer({ map, locations, offline }: BusLayerProps) {
         pos.lastSeen = now;
       }
 
+      // Spawn new positions + markers, prune vanished ones.
       for (const [id, loc] of Object.entries(targets)) {
-        if (!loc || !positions[id]) {
-          if (loc) {
-            positions[id] = {
-              lat: loc.lat,
-              lng: loc.lng,
-              heading: loc.heading ?? 0,
-              offline: off[id] ?? false,
-              lastSeen: now,
-            };
-          }
+        if (!loc) continue;
+        if (!positions[id]) {
+          positions[id] = {
+            lat: loc.lat,
+            lng: loc.lng,
+            heading: loc.heading ?? 0,
+            offline: off[id] ?? false,
+            lastSeen: now,
+          };
+        }
+        if (!markers[id]) {
+          const glow = L.circleMarker([loc.lat, loc.lng], {
+            radius: 18,
+            color: "#107C41",
+            weight: 0,
+            fillColor: "#107C41",
+            fillOpacity: 0.18,
+            interactive: false,
+            className: "sd-bus-glow",
+          }).addTo(group);
+          const marker = L.marker([loc.lat, loc.lng], {
+            icon: busIcon(off[id] ?? false),
+            interactive: false,
+            keyboard: false,
+            title: "",
+          }).addTo(group);
+          markers[id] = {
+            marker,
+            glow,
+            markerEl: marker.getElement() ?? null,
+            rotEl: marker.getElement()?.querySelector<HTMLElement>("[data-bus-rotate]") ?? null,
+          };
         }
       }
+      for (const [id, m] of Object.entries(markers)) {
+        const pos = positions[id];
+        if (!pos) {
+          m.marker.remove();
+          m.glow.remove();
+          delete markers[id];
+          continue;
+        }
+        m.marker.setLatLng([pos.lat, pos.lng]);
+        m.glow.setLatLng([pos.lat, pos.lng]);
+        if (m.rotEl) m.rotEl.style.transform = `rotate(${pos.heading}deg)`;
+        if (m.markerEl) m.markerEl.style.opacity = pos.offline ? "0.45" : "1";
+      }
 
-      const features = Object.entries(positions).map(([id, p]) => ({
-        id,
-        lat: p.lat,
-        lng: p.lng,
-        heading: p.heading,
-        offline: p.offline,
-      }));
-      if (features.length) addOrUpdateSource(map, "buses", busFeatures(features));
       raf = requestAnimationFrame(frame);
     };
 
@@ -121,18 +129,10 @@ export function BusLayer({ map, locations, offline }: BusLayerProps) {
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
-      for (const id of ["buses-symbol", "buses-glow"]) {
-        try {
-          if (map.getLayer(id)) map.removeLayer(id);
-        } catch {
-          // ignore
-        }
-      }
-      try {
-        if (map.getSource("buses")) map.removeSource("buses");
-      } catch {
-        // ignore
-      }
+      group.clearLayers();
+      map.removeLayer(group);
+      markersRef.current = {};
+      positionsRef.current = {};
     };
   }, [map]);
 

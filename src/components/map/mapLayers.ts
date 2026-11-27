@@ -1,124 +1,140 @@
-// Imperative MapLibre layers for routes (casing + fill + direction arrows)
-// and stops (marker + label). Bus layers + animation live in BusLayer.tsx.
-import type * as maplibregl from "maplibre-gl";
+// Leaflet layers for routes (casing + fill + direction arrows) and stops
+// (dot + label). Live bus markers + animation live in BusLayer.tsx.
+import * as L from "leaflet";
 import type { FeatureCollection } from "geojson";
-import { ARROW_ICON_SVG, ensureImage } from "./icons";
-import { addOrUpdateSource, routeFeatures, stopFeatures } from "./sources";
 import type { Stop } from "@/lib/types";
+import { groupFor, removeByPrefix } from "./sources";
+import { arrowIcon, stopLabelIcon } from "./icons";
 
-export { routeFeatures, stopFeatures };
+export { routeFeatures, stopFeatures } from "./sources";
 
-/** Add route display layers (drawn once; fed via updateRoutes below). */
-export function addRouteLayers(map: maplibregl.Map) {
-  if (map.getLayer("route-fill")) return;
-  const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
-  addOrUpdateSource(map, "routes", empty);
-  ensureImage(map, "route-arrow", ARROW_ICON_SVG);
+// Route geometry is kept here so the line widths can be refreshed when the
+// user zooms (Leaflet polylines have a fixed pixel weight per zoom level).
+const routeData = new WeakMap<L.Map, L.LatLng[][] & { colors: string[] }>();
 
-  map.addLayer({
-    id: "route-case",
-    type: "line",
-    source: "routes",
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": "#FFFFFF",
-      "line-width": ["interpolate", ["linear"], ["zoom"], 14, 5, 16, 11],
-      "line-opacity": 0.95,
-    },
-  });
-  map.addLayer({
-    id: "route-fill",
-    type: "line",
-    source: "routes",
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": ["coalesce", ["get", "color"], "#E8A33D"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 14, 3, 16, 7.5],
-      "line-opacity": 0.85,
-    },
-  });
-  map.addLayer({
-    id: "route-arrows",
-    type: "symbol",
-    source: "routes",
-    layout: {
-      "symbol-placement": "line",
-      "symbol-spacing": 150,
-      "icon-image": "route-arrow",
-      "icon-size": 0.55,
-      "icon-allow-overlap": false,
-      "icon-rotation-alignment": "map",
-    },
-    paint: { "icon-opacity": 0.95 },
+const ARROW_SPACING_M = 220;
+
+/** Add route display layers (feeds via updateRoutes below). */
+export function addRouteLayers(map: L.Map) {
+  groupFor(map, "routes");
+  // Re-apply widths on zoom so routes stay readable like the old styling.
+  map.on("zoomend", () => rebuildRoutes(map));
+}
+
+/** Internal: rebuild the route layer group from stored geometry. */
+function rebuildRoutes(map: L.Map) {
+  const group = groupFor(map, "routes");
+  group.clearLayers();
+  const stored = routeData.get(map);
+  if (!stored) return;
+
+  const zoom = map.getZoom();
+  const scale = zoom < 15 ? 0.75 : zoom > 17 ? 1.7 : 0.75 + (zoom - 15) * 0.475;
+
+  stored.forEach((line, i) => {
+    if (line.length < 2) return;
+    const color = stored.colors[i] ?? "#E8A33D";
+    const fillWeight = 3.6 * scale;
+    const caseWeight = fillWeight + 3.8;
+
+    L.polyline(line, {
+      color: "#FFFFFF",
+      weight: caseWeight,
+      opacity: 0.95,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: false,
+      className: "sd-route-case",
+    }).addTo(group);
+
+    L.polyline(line, {
+      color,
+      weight: fillWeight,
+      opacity: 0.9,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: false,
+      className: "sd-route-fill",
+    }).addTo(group);
+
+    addRouteArrows(group, line);
   });
 }
 
-export function updateRoutes(map: maplibregl.Map, featureCollection: FeatureCollection) {
-  addOrUpdateSource(map, "routes", featureCollection);
+/** Scatter small rotated arrows along the route to show travel direction. */
+function addRouteArrows(group: L.LayerGroup, line: L.LatLng[]) {
+  let travelled = 0;
+  let acc = 0;
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i];
+    const b = line[i + 1];
+    const segLen = a.distanceTo(b);
+    if (segLen === 0) continue;
+    const angle = Math.atan2(b.lng - a.lng, b.lat - a.lat) * (180 / Math.PI);
+    while (acc <= travelled + segLen) {
+      const t = Math.max(0, (acc - travelled) / segLen);
+      const pt: [number, number] = [
+        a.lat + (b.lat - a.lat) * t,
+        a.lng + (b.lng - a.lng) * t,
+      ];
+      L.marker(pt, {
+        icon: arrowIcon(angle),
+        interactive: false,
+        pane: "overlayPane",
+      }).addTo(group);
+      acc += ARROW_SPACING_M;
+    }
+    travelled += segLen;
+  }
 }
 
-/** Add stop markers + labels. Stop clicks are handled on layer "stops-dot". */
-export function addStopLayers(map: maplibregl.Map) {
-  if (map.getLayer("stops-dot")) return;
-  const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
-  addOrUpdateSource(map, "stops", empty);
+export function updateRoutes(map: L.Map, featureCollection: FeatureCollection) {
+  const lines = featureCollection.features
+    .filter((f) => f.geometry.type === "LineString")
+    .map((f) => ({
+      latlngs: (f.geometry.coordinates as [number, number][]).map(
+        ([lng, lat]) => L.latLng(lat, lng) as L.LatLng
+      ),
+      color: (f.properties?.color as string | undefined) ?? "#E8A33D",
+    }));
 
-  map.addLayer({
-    id: "stops-dot",
-    type: "circle",
-    source: "stops",
-    minzoom: 13.5,
-    paint: {
-      "circle-radius": 7,
-      "circle-color": "#FFFFFF",
-      "circle-stroke-color": ["case", ["get", "selected"], "#E8A33D", "#2E7D4F"],
-      "circle-stroke-width": ["case", ["get", "selected"], 5, 3],
-    },
-  });
-  map.addLayer({
-    id: "stops-label",
-    type: "symbol",
-    source: "stops",
-    minzoom: 14,
-    layout: {
-      "text-field": ["get", "name"],
-      "text-font": ["Noto Sans Bold", "Open Sans Bold", "Noto Sans Regular"],
-      "text-size": ["case", ["get", "selected"], 14, 12],
-      "text-offset": [0, 1.4],
-      "text-anchor": "top",
-      "text-letter-spacing": 0.02,
-    },
-    paint: {
-      "text-color": ["case", ["get", "selected"], "#9A5710", "#2E6B3B"],
-      "text-halo-color": "#F7F1E5",
-      "text-halo-width": 1.6,
-    },
-  });
+  const stored = lines.map((l) => l.latlngs) as L.LatLng[][] & { colors: string[] };
+  stored.colors = lines.map((l) => l.color);
+  routeData.set(map, stored);
+  rebuildRoutes(map);
+}
+
+/** Add stop marker + label layers. */
+export function addStopLayers(map: L.Map) {
+  groupFor(map, "stops");
+  groupFor(map, "stops-labels");
 }
 
 export function updateStops(
-  map: maplibregl.Map,
+  map: L.Map,
   stops: Array<Stop & { selected?: boolean }>
 ) {
-  addOrUpdateSource(map, "stops", stopFeatures(stops));
+  const dotGroup = groupFor(map, "stops");
+  const labelGroup = groupFor(map, "stops-labels");
+  dotGroup.clearLayers();
+  labelGroup.clearLayers();
+
+  for (const s of stops) {
+    const ll: [number, number] = [s.lat, s.lng];
+    L.circleMarker(ll, {
+      radius: 7,
+      color: s.selected ? "#E8A33D" : "#2E7D4F",
+      weight: s.selected ? 5 : 3,
+      fillColor: "#FFFFFF",
+      fillOpacity: 1,
+      interactive: false,
+      className: "sd-stop-dot",
+    }).addTo(dotGroup);
+    L.marker(ll, {
+      icon: stopLabelIcon(s.name, !!s.selected),
+      interactive: false,
+    }).addTo(labelGroup);
+  }
 }
 
-/** Remove layers + source for a given prefix id. */
-export function removeByPrefix(map: maplibregl.Map, prefix: string) {
-  if (!map.getStyle()) return;
-  const ids = map.getStyle().layers.map((l) => l.id);
-  for (const id of ids) {
-    if (id.startsWith(prefix)) {
-      try {
-        map.removeLayer(id);
-      } catch {
-        // ignore
-      }
-    }
-  }
-  try {
-    map.removeSource(prefix);
-  } catch {
-    // ignore
-  }
-}
+export { removeByPrefix };
