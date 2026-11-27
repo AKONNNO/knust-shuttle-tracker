@@ -9,10 +9,59 @@ import {
   DEFAULT_ZOOM,
 } from "@/lib/constants";
 
-// Warm, keyless raster base (OpenFreeMap "Liberty"). Override with VITE_MAP_TILE_URL.
-// CARTO's public basemaps started requiring an API key, so we default to OpenFreeMap.
-const DEFAULT_TILE_URL = "https://tile.openfreemap.org/styles/liberty/{z}/{x}/{y}.png";
-const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim() || DEFAULT_TILE_URL;
+// Keyless raster basemaps, tried in order. If one tile host is unreachable or
+// rejects requests (like CARTO, which now requires an API key), we hop to the
+// next provider so the map never renders blank. Override with VITE_MAP_TILE_URL
+// to force a single source.
+const TILE_SOURCES = [
+  {
+    url: "https://tile.openfreemap.org/styles/liberty/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
+    maxZoom: 20,
+  },
+  {
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
+  {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar",
+    maxZoom: 19,
+  },
+];
+
+function addBasemap(map: L.Map) {
+  const override = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
+  const sources = override
+    ? [{ url: override, attribution: "Tiles", maxZoom: 20 }]
+    : TILE_SOURCES;
+
+  let index = 0;
+  let failures = 0;
+  let layer: L.TileLayer | null = null;
+
+  const apply = () => {
+    layer?.remove();
+    const src = sources[index];
+    layer = L.tileLayer(src.url, { attribution: src.attribution, maxZoom: src.maxZoom });
+    layer.on("tileerror", () => {
+      failures += 1;
+      // A whole tileset from one host usually dies together, so after a few
+      // failures hop to the next provider instead of showing a blank map.
+      if (failures >= 3 && index < sources.length - 1) {
+        failures = 0;
+        index += 1;
+        apply();
+      }
+    });
+    layer.addTo(map);
+  };
+
+  apply();
+}
 
 export type MapClickHandler = (lngLat: { lng: number; lat: number }) => void;
 
@@ -60,12 +109,7 @@ export function CampusMap({ onReady, onClick, center, className, cursor = "defau
     });
     mapRef.current = map;
 
-    L.tileLayer(tileUrl, {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
-    }).addTo(map);
+    addBasemap(map);
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
