@@ -18,7 +18,7 @@ Three role-based apps share one platform:
 | ----------- | ------------------------------------------------------------- |
 | UI          | React 18 + TypeScript + Vite                                  |
 | Styling     | Tailwind CSS + shadcn/ui                                      |
-| Map         | Leaflet with CARTO Voyager raster tiles (optional `VITE_MAP_TILE_URL`)  |
+| Map         | Leaflet with OpenFreeMap raster tiles (optional `VITE_MAP_TILE_URL`)  |
 | Backend     | Supabase (Postgres + Auth + Realtime) + Nitro server routes   |
 | Edge funcs  | Supabase Edge Functions (admin-only user ops)                 |
 
@@ -40,7 +40,7 @@ See `.env.example`. All are optional:
 | ------------------------ | -------------------------------------------------------------- |
 | `VITE_SUPABASE_URL`      | Supabase project URL (browser-safe)                            |
 | `VITE_SUPABASE_ANON_KEY` | Supabase publishable key (browser-safe)                        |
-| `VITE_MAP_TILE_URL`      | Optional raster tile URL template to replace the CARTO Voyager basemap |
+| `VITE_MAP_TILE_URL`      | Optional raster tile URL template to replace the OpenFreeMap basemap |
 
 > Secrets (`service_role`, DB URL) **never** live in the client bundle. They are
 > only used inside Edge Functions, which ship pre-configured with

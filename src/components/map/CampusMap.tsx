@@ -9,8 +9,9 @@ import {
   DEFAULT_ZOOM,
 } from "@/lib/constants";
 
-// Warm, keyless raster base (CARTO Voyager). Override with VITE_MAP_TILE_URL.
-const DEFAULT_TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+// Warm, keyless raster base (OpenFreeMap "Liberty"). Override with VITE_MAP_TILE_URL.
+// CARTO's public basemaps started requiring an API key, so we default to OpenFreeMap.
+const DEFAULT_TILE_URL = "https://tile.openfreemap.org/styles/liberty/{z}/{x}/{y}.png";
 const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim() || DEFAULT_TILE_URL;
 
 export type MapClickHandler = (lngLat: { lng: number; lat: number }) => void;
@@ -61,7 +62,7 @@ export function CampusMap({ onReady, onClick, center, className, cursor = "defau
 
     L.tileLayer(tileUrl, {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
       subdomains: "abcd",
       maxZoom: 20,
     }).addTo(map);
