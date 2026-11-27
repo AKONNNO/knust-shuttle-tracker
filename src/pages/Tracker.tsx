@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type * as maplibregl from "maplibre-gl";
+import type * as L from "leaflet";
 import { Compass, Crosshair, Bus as BusIcon, Route, LoaderCircle } from "lucide-react";
 import { useLiveBuses } from "@/hooks/useLiveBuses";
 import { useRoutes } from "@/hooks/useRoutes";
@@ -65,7 +65,7 @@ export default function Tracker() {
   const { routes, orderedStopsFor } = useRoutes();
   const { stops } = useStops();
   const { position: me } = useGeolocation(false);
-  const [map, setMap] = useState<maplibregl.Map | null>(null);
+  const [map, setMap] = useState<L.Map | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [selectedBus, setSelectedBus] = useState<string | null>(null);
   const [fitRequested, setFitRequested] = useState(0);
@@ -134,19 +134,6 @@ export default function Tracker() {
           }
         : { type: "FeatureCollection", features: [] }
     );
-    if (!map.getLayer("me-dot")) {
-      map.addLayer({
-        id: "me-dot",
-        type: "circle",
-        source: "me-dot",
-        paint: {
-          "circle-radius": 8,
-          "circle-color": "#2F80ED",
-          "circle-stroke-color": "#FFFFFF",
-          "circle-stroke-width": 2.5,
-        },
-      });
-    }
   }, [map, me]);
 
   // Fly to the selected bus when the user picks it (or on fit-request).
@@ -154,13 +141,7 @@ export default function Tracker() {
     if (!map || !selectedBus) return;
     const loc = locations[selectedBus];
     if (loc) {
-      map.flyTo({
-        center: [loc.lng, loc.lat],
-        zoom: Math.max(map.getZoom(), 16.4),
-        speed: 1.2,
-        curve: 1.6,
-        essential: false,
-      });
+      map.flyTo([loc.lat, loc.lng], Math.max(map.getZoom(), 16.4), { duration: 1.2 });
     }
   }, [map, selectedBus, locations, fitRequested]);
 
