@@ -1,4 +1,4 @@
-import { Bus as BusIcon, Wifi, WifiOff, ChevronRight } from "lucide-react";
+import { Bus as BusIcon, Wifi, WifiOff, ChevronRight, MessageSquare } from "lucide-react";
 import type { LiveBus } from "@/lib/types";
 
 export interface BusEtaInfo {
@@ -14,9 +14,11 @@ interface BusCardProps {
   eta: BusEtaInfo;
   selected: boolean;
   onSelect: () => void;
+  /** Number of student remarks on this ride (0/undefined hides the chip). */
+  commentCount?: number;
 }
 
-export function BusCard({ bus, routeColor, offline, eta, selected, onSelect }: BusCardProps) {
+export function BusCard({ bus, routeColor, offline, eta, selected, onSelect, commentCount = 0 }: BusCardProps) {
   return (
     <button
       onClick={onSelect}
@@ -37,6 +39,15 @@ export function BusCard({ bus, routeColor, offline, eta, selected, onSelect }: B
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="font-extrabold text-[15px] tracking-tight truncate">{bus.name}</p>
+            {commentCount > 0 && (
+              <span
+                title={`${commentCount} remark${commentCount === 1 ? "" : "s"}`}
+                className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-bold shrink-0"
+              >
+                <MessageSquare className="h-3 w-3" />
+                {commentCount}
+              </span>
+            )}
             {offline ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 text-zinc-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                 <WifiOff className="h-3 w-3" /> Offline

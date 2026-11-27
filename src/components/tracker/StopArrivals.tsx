@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bus as BusIcon, Clock, Hourglass, MapPin } from "lucide-react";
 import type { LiveBusWithStops, Stop } from "@/lib/types";
 import {
@@ -9,10 +9,22 @@ import {
 } from "@/lib/geo";
 import { routeColor } from "@/lib/routeColors";
 
+/** Re-renders on an interval so ETA countdowns tick down between GPS updates. */
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
 interface ArrivalRow {
   bus: LiveBusWithStops;
   remainingM: number;
   etaSec: number;
+  updatedMs: number;
   passed: boolean;
 }
 
@@ -28,6 +40,8 @@ interface StopArrivalsProps {
  * stop, with the estimated wait until it reaches the stop.
  */
 export function StopArrivals({ stop, buses, colorFor, offline }: StopArrivalsProps) {
+  const now = useNow(1000);
+
   const arrivals = useMemo<ArrivalRow[]>(() => {
     if (!stop) return [];
     const rows: ArrivalRow[] = [];
@@ -48,6 +62,7 @@ export function StopArrivals({ stop, buses, colorFor, offline }: StopArrivalsPro
         bus: b,
         remainingM: travel.remainingM,
         etaSec: etaSeconds(travel.remainingM, b.bus_locations.speed),
+        updatedMs: new Date(b.bus_locations.updated_at).getTime(),
         passed: travel.passed,
       });
     }
@@ -88,9 +103,11 @@ export function StopArrivals({ stop, buses, colorFor, offline }: StopArrivalsPro
         </p>
       ) : (
         <ul className="mt-3 space-y-2">
-          {arrivals.map(({ bus, remainingM, etaSec, passed }) => {
+          {arrivals.map(({ bus, remainingM, etaSec, updatedMs, passed }) => {
             const color = colorFor[bus.routes?.id ?? ""] ?? routeColor(0);
             const isOff = offline[bus.id] ?? false;
+            // Count down in real time from the bus's last reported position.
+            const liveEta = Math.max(0, etaSec - Math.max(0, (now - updatedMs) / 1000));
             return (
               <li
                 key={bus.id}
@@ -118,8 +135,8 @@ export function StopArrivals({ stop, buses, colorFor, offline }: StopArrivalsPro
                   ) : passed ? (
                     <span className="text-[11px] font-bold text-muted-foreground">Left stop</span>
                   ) : (
-                    <span className="rounded-full bg-secondary/20 px-2.5 py-1 text-xs font-extrabold text-foreground">
-                      {formatDuration(etaSec)}
+                    <span className="rounded-full bg-secondary/20 px-2.5 py-1 text-xs font-extrabold text-foreground tabular-nums">
+                      {formatDuration(liveEta)}
                     </span>
                   )}
                 </div>

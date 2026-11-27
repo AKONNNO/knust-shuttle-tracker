@@ -5,6 +5,7 @@ import { useLiveBuses } from "@/hooks/useLiveBuses";
 import { useRoutes } from "@/hooks/useRoutes";
 import { useStops } from "@/hooks/useStops";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useCommentCounts } from "@/hooks/useCommentCounts";
 import { CampusMap } from "@/components/map/CampusMap";
 import { BusLayer } from "@/components/map/BusLayer";
 import { addRouteLayers, addStopLayers, updateRoutes, updateStops } from "@/components/map/mapLayers";
@@ -222,6 +223,10 @@ export default function Tracker() {
   const selectedBusObj = busesWithStops.find((b) => b.id === selectedBus) ?? null;
   const selectedUpcoming = selectedBusObj ? computeUpcoming(selectedBusObj) : null;
 
+  // Live remark counts per shuttle, shown as chips on the bus cards.
+  const notedBusIds = useMemo(() => filteredBuses.map((b) => b.id), [filteredBuses]);
+  const commentCounts = useCommentCounts(notedBusIds);
+
   // Refresh "live" selection if the bus disappears.
   useEffect(() => {
     if (selectedBus && !buses.some((b) => b.id === selectedBus)) {
@@ -394,6 +399,7 @@ export default function Tracker() {
                   offline={offline[b.id] ?? false}
                   eta={etaFor(b)}
                   selected={selectedBus === b.id}
+                  commentCount={commentCounts[b.id] ?? 0}
                   onSelect={() => {
                     setSelectedBus((cur) => (cur === b.id ? null : b.id));
                     setFitRequested((n) => n + 1);
