@@ -17,13 +17,19 @@ interface GeolocationState {
   restart: () => void;
 }
 
+const DEFAULT_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  maximumAge: 2000,
+  timeout: 20000,
+};
+
 /**
  * Wraps navigator.geolocation.watchPosition. `throttleMs` dedupes updates.
  * Options may be passed through (enableHighAccuracy etc.).
  */
 export function useGeolocation(
   enabled = true,
-  options: PositionOptions = { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+  options: PositionOptions = DEFAULT_OPTIONS,
   throttleMs = 1000
 ): GeolocationState {
   const [position, setPosition] = useState<GeoPosition | null>(null);
