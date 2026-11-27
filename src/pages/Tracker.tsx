@@ -112,10 +112,7 @@ export default function Tracker() {
     );
 
     const stopList = selectedRoute === null ? stops : orderedStopsFor(selectedRoute);
-    updateStops(
-      map,
-      stopList.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng }))
-    );
+    updateStops(map, stopList);
   }, [map, routes, stops, selectedRoute, colorFor, orderedStopsFor]);
 
   // Own-location blue dot.
