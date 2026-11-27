@@ -69,3 +69,9 @@ Any package used inside `server/` (database drivers like `@neondatabase/serverle
 - Importing server-only packages or referencing server-only env vars (`process.env.DATABASE_URL`, secrets) from `src/` → wrong. The Vite client bundle is public; this leaks them. Server code lives in `server/` only.
 
 <!-- nitro:end -->
+
+## Admin Account
+
+- Admin login email: `asamoahestella500@gmail.com`
+- Role: `admin` (routes to `/admin` dashboard)
+- Password is NOT stored in this repo — it is managed in Supabase Auth (already created by the user). Ask the user for it if you ever need to sign in on their behalf.
