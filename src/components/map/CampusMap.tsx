@@ -9,16 +9,11 @@ import {
   DEFAULT_ZOOM,
 } from "@/lib/constants";
 
-// Keyless raster basemaps, tried in order (CARTO light is the fastest, cleanest
-// minimalist look — closest to Uber's daytime UI). If one tile host is
-// unreachable or rejects requests we hop to the next provider so the map never
-// renders blank. Override with VITE_MAP_TILE_URL to force a single source.
+// Keyless raster basemaps, tried in order. If one tile host is unreachable or
+// rejects requests (like CARTO, which now requires an API key), we hop to the
+// next provider so the map never renders blank. Override with VITE_MAP_TILE_URL
+// to force a single source.
 const TILE_SOURCES = [
-  {
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    maxZoom: 20,
-  },
   {
     url: "https://tile.openfreemap.org/styles/liberty/{z}/{x}/{y}.png",
     attribution:
