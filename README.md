@@ -57,9 +57,9 @@ See `.env.example`. All are optional:
 - `ProtectedRoute` gates each app page; `/admin` requires the `admin` role,
   `/driver` requires `driver` or `admin`.
 
-The first account ever created becomes the **admin** by default (see
-`supabase/functions/set-role/index.ts`); afterwards new sign-ups start as
-`student`.
+The first account ever created becomes the **admin** by default — the
+`handle_new_user` trigger on `auth.users` sets `role='admin'` when the
+`profiles` table is empty, and `student` on every later sign-up.
 
 ## Admin workflow
 
