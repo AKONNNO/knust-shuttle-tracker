@@ -42,10 +42,10 @@ interface RouteEditorProps {
 
 function pointFeatures(points: [number, number][]) {
   return {
-    type: "FeatureCollection",
+    type: "FeatureCollection" as const,
     features: points.map(([lng, lat], i) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [lng, lat] },
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [lng, lat] },
       properties: { idx: i + 1 },
     })),
   };

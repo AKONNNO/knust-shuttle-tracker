@@ -69,7 +69,7 @@ export function CampusMap({ onReady, onClick, center, className, dragRotate = tr
     const styleTouched = () => {
       if (cursor && map.getCanvas()) map.getCanvas().style.cursor = cursor;
     };
-    map.on("mouseenter", styleTouched);
+    map.on("mousemove", styleTouched);
     map.easeTo({ bearing: DEFAULT_BEARING });
 
     return () => {
