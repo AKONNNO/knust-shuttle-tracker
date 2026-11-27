@@ -1,6 +1,6 @@
 // Live bus layer: smooth interpolated marker movement + heading rotation.
 import { useEffect, useRef } from "react";
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { BusLocation } from "@/lib/types";
 import { BUS_ICON_SVG, ensureImage } from "./icons";
 import { addOrUpdateSource, busFeatures } from "./sources";

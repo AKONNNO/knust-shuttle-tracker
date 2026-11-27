@@ -1,5 +1,5 @@
 // Build GeoJSON FeatureCollections + upsert sources for the map layers.
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { FeatureCollection, LineString, Point } from "geojson";
 
 export function addOrUpdateSource(map: maplibregl.Map, id: string, data: FeatureCollection) {

@@ -1,6 +1,6 @@
 // Imperative MapLibre layers for routes (casing + fill + direction arrows)
 // and stops (marker + label). Bus layers + animation live in BusLayer.tsx.
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
 import { ARROW_ICON_SVG, ensureImage } from "./icons";
 import { addOrUpdateSource, routeFeatures, stopFeatures } from "./sources";

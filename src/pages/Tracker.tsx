@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { Compass, Crosshair, Bus as BusIcon, Route, LoaderCircle } from "lucide-react";
 import { useLiveBuses } from "@/hooks/useLiveBuses";
 import { useRoutes } from "@/hooks/useRoutes";
