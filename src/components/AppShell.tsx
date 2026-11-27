@@ -110,10 +110,7 @@ export function AppShell() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    onSelect={signOut}
-                  >
+                  <DropdownMenuItem variant="destructive" onSelect={signOut}>
                     <LogOut className="h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>
