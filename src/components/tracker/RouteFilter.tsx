@@ -10,7 +10,7 @@ interface RouteFilterProps {
 
 export function RouteFilter({ routes, selected, colorFor, onChange }: RouteFilterProps) {
   return (
-    <div className="glass rounded-2xl p-2 flex items-center gap-1 overflow-x-auto scrollbar-none">
+    <div className="rounded-2xl border border-border/70 bg-card p-1.5 shadow-sm flex items-center gap-1 overflow-x-auto scrollbar-none">
       <span className="shrink-0 pl-2 pr-1 text-muted-foreground">
         <ListFilter className="h-4 w-4" />
       </span>

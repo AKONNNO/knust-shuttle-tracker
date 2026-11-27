@@ -260,29 +260,38 @@ export default function Tracker() {
   const liveCount = busesWithStops.filter((b) => !offline[b.id]).length;
 
   return (
-    <div className="lg:grid lg:grid-cols-[1fr_384px] lg:gap-4 items-start">
-      {/* Map */}
-      <div className="relative h-[56dvh] lg:h-[calc(100dvh-7rem)] lg:sticky lg:top-20 rounded-[1.5rem] overflow-hidden border border-border/60 shadow-[0_10px_45px_-18px_rgba(20,60,40,0.4)] bg-card">
-        <CampusMap onReady={setMap} className="h-full w-full" dragRotate />
-
-        {/* Live bus markers (interpolated + heading-aware) */}
-        {map && <BusLayer map={map} locations={locations} offline={offline} />}
-
-        {/* Route filter */}
-        <div className="absolute left-2.5 right-2.5 top-2.5 z-10 sm:right-auto sm:max-w-md">
+    <div className="space-y-4">
+      {/* Page header: title + route selector (always visible above the map) */}
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Live Tracker</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Follow every KNUST shuttle on campus and check real-time arrivals at your stop.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+            {liveCount} bus{liveCount === 1 ? "" : "es"} live
+          </div>
+        </div>
+        <div className="mt-3">
           <RouteFilter routes={routes} selected={selectedRoute} colorFor={colorFor} onChange={setSelectedRoute} />
         </div>
+      </div>
 
-        {/* Live status pill */}
-        <div className="absolute bottom-2.5 left-2.5 z-10 glass rounded-full px-3 py-1.5 text-[11px] font-bold flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-          </span>
-          {liveCount} bus{liveCount === 1 ? "" : "es"} live
-        </div>
+      <div className="lg:grid lg:grid-cols-[1fr_384px] lg:gap-4 items-start">
+        {/* Map */}
+        <div className="relative h-[56dvh] lg:h-[calc(100dvh-15rem)] lg:sticky lg:top-20 rounded-[1.5rem] overflow-hidden border border-border/60 shadow-[0_10px_45px_-18px_rgba(20,60,40,0.4)] bg-card">
+          <CampusMap onReady={setMap} className="h-full w-full" dragRotate />
 
-        {/* Controls */}
+          {/* Live bus markers (interpolated + heading-aware) */}
+          {map && <BusLayer map={map} locations={locations} offline={offline} />}
+
+          {/* Controls */}
         <div className="absolute bottom-2.5 right-2.5 z-10 flex flex-col gap-1.5">
           <div className="glass rounded-2xl p-1.5 flex flex-col gap-1.5">
             <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl" title="Fit all buses"
@@ -410,6 +419,7 @@ export default function Tracker() {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
