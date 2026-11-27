@@ -73,7 +73,7 @@ export default function AuthCallback() {
           </>
         ) : (
           <>
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 border border-primary/20 w-16 h-16">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary/10 border border-primary/20">
               <LoaderCircle className="h-7 w-7 animate-spin text-primary" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">

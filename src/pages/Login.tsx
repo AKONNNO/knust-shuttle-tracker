@@ -80,7 +80,7 @@ export default function Login() {
             {FEATURES.map((f) => (
               <li key={f.title} className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10">
-                  <f.icon className="h-4.5 w-4.5 h-5 w-5 text-[#F5A623]" />
+                  <f.icon className="h-5 w-5 text-[#F5A623]" />
                 </span>
                 <div>
                   <p className="font-bold text-[15px]">{f.title}</p>
