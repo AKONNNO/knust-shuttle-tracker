@@ -31,6 +31,7 @@ import {
 import { formatDistance } from "@/lib/geo";
 import type { LineGeometry, Stop } from "@/lib/types";
 import type { RouteEntity } from "@/hooks/useRoutes";
+import type { FeatureCollection } from "geojson";
 
 interface RouteEditorProps {
   open: boolean;
