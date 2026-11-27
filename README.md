@@ -109,6 +109,20 @@ Tables: `profiles`, `stops`, `routes`, `route_stops`, `buses`,
   policies scoped to `buses.driver_id`.
 - A trigger on `auth.users` creates a `profiles` row on sign-up.
 
+### Demo seed data
+
+The connected project ships with seeded demo data so the tracker, admin
+dashboard, and fleet views are populated instantly:
+
+- **12 stops** around campus (Tech Junction, Great Hall, Commercial Area, …)
+- **2 routes** — *Main Loop* (7 stops) and *University Link* (6 stops), each
+  with road geometry + stop order
+- **4 shuttles** (*Shuttle 1–4*) assigned across the two routes (one inactive)
+
+No live `bus_locations` are seeded — shuttles appear on the tracker when a
+driver starts a trip and broadcasts. Admins can edit or delete all of this from
+the admin dashboard at any time.
+
 ## Deployment notes
 
 - Client + Nitro deploy to Vercel (`vercel.json` provided); Edge Functions run

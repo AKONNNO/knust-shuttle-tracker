@@ -4,7 +4,7 @@ import type { Route } from "@/lib/types";
 interface RouteFilterProps {
   routes: Route[];
   selected: string | null; // null = all
-  colorFor: (routeId: string) => string;
+  colorFor: Record<string, string>;
   onChange: (routeId: string | null) => void;
 }
 
@@ -40,7 +40,7 @@ export function RouteFilter({ routes, selected, colorFor, onChange }: RouteFilte
           >
             <span
               className="h-2 w-2 rounded-full"
-              style={{ background: active ? "#fff" : colorFor(r.id) }}
+              style={{ background: active ? "#fff" : colorFor[r.id] }}
             />
             {r.name}
           </button>

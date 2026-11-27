@@ -6,6 +6,7 @@ import { useRoutes } from "@/hooks/useRoutes";
 import { useStops } from "@/hooks/useStops";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { CampusMap } from "@/components/map/CampusMap";
+import { BusLayer } from "@/components/map/BusLayer";
 import { addRouteLayers, addStopLayers, updateRoutes, updateStops } from "@/components/map/mapLayers";
 import { addOrUpdateSource, routeFeatures } from "@/components/map/sources";
 import { RouteFilter } from "@/components/tracker/RouteFilter";
@@ -234,6 +235,9 @@ export default function Tracker() {
       {/* Map */}
       <div className="relative h-[56dvh] lg:h-[calc(100dvh-7rem)] lg:sticky lg:top-20 rounded-[1.5rem] overflow-hidden border border-border/60 shadow-[0_10px_45px_-18px_rgba(20,60,40,0.4)] bg-card">
         <CampusMap onReady={setMap} className="h-full w-full" dragRotate />
+
+        {/* Live bus markers (interpolated + heading-aware) */}
+        {map && <BusLayer map={map} locations={locations} offline={offline} />}
 
         {/* Route filter */}
         <div className="absolute left-2.5 right-2.5 top-2.5 z-10 sm:right-auto sm:max-w-md">
