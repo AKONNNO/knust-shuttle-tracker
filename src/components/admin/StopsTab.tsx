@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type * as maplibregl from "maplibre-gl";
+import type * as L from "leaflet";
 import {
   MapPin,
   Plus,
@@ -52,7 +52,7 @@ function StopFormDialog({
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [map, setMap] = useState<maplibregl.Map | null>(null);
+  const [map, setMap] = useState<L.Map | null>(null);
   const { restart, position, error } = useGeolocation(open);
 
   useEffect(() => {
@@ -83,19 +83,6 @@ function StopFormDialog({
           }
         : { type: "FeatureCollection", features: [] }
     );
-    if (!map.getLayer("stop-pick")) {
-      map.addLayer({
-        id: "stop-pick",
-        type: "circle",
-        source: "stop-pick",
-        paint: {
-          "circle-radius": 10,
-          "circle-color": "#E8A33D",
-          "circle-stroke-color": "#FFFFFF",
-          "circle-stroke-width": 3,
-        },
-      });
-    }
   }, [map, lat, lng]);
 
   // When geolocation resolves, pre-fill the coordinates.
@@ -109,7 +96,7 @@ function StopFormDialog({
   const pick = (ll: { lat: number; lng: number }) => {
     setLat(ll.lat.toFixed(6));
     setLng(ll.lng.toFixed(6));
-    map?.flyTo({ center: [ll.lng, ll.lat], zoom: Math.max(map.getZoom(), 16.4), duration: 500 });
+    map?.flyTo([ll.lat, ll.lng], Math.max(map.getZoom(), 16.4), { duration: 0.5 });
   };
 
   const submit = async (e: React.FormEvent) => {

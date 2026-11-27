@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type * as maplibregl from "maplibre-gl";
+import type * as L from "leaflet";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -62,7 +62,7 @@ export function RouteEditor({ open, existing, stops, onClose, onSaved }: RouteEd
   const [availableQuery, setAvailableQuery] = useState("");
   const [snapping, setSnapping] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [map, setMap] = useState<maplibregl.Map | null>(null);
+  const [map, setMap] = useState<L.Map | null>(null);
 
   // Reset state when the editor opens.
   useEffect(() => {
@@ -91,37 +91,12 @@ export function RouteEditor({ open, existing, stops, onClose, onSaved }: RouteEd
     [points]
   );
 
-  // Set up editor layers once the map is ready.
+  // Set up editor layers once the map is ready (edit points are managed by
+  // addOrUpdateSource in the redraw effect below).
   useEffect(() => {
     if (!map) return;
     addRouteLayers(map);
     addStopLayers(map);
-    if (!map.getLayer("edit-pts")) {
-      addOrUpdateSource(map, "edit-pts", { type: "FeatureCollection", features: [] });
-      map.addLayer({
-        id: "edit-pts",
-        type: "circle",
-        source: "edit-pts",
-        paint: {
-          "circle-radius": 9,
-          "circle-color": "#E8A33D",
-          "circle-stroke-color": "#FFFFFF",
-          "circle-stroke-width": 3,
-        },
-      });
-      map.addLayer({
-        id: "edit-pts-label",
-        type: "symbol",
-        source: "edit-pts",
-        layout: {
-          "text-field": ["get", "idx"],
-          "text-size": 11,
-          "text-font": ["Noto Sans Bold", "Open Sans Bold"],
-          "text-allow-overlap": true,
-        },
-        paint: { "text-color": "#FFFFFF", "text-halo-color": "#B9741F", "text-halo-width": 1.4 },
-      });
-    }
   }, [map]);
 
   // Redraw line + points + ordered stops whenever they change.
@@ -159,11 +134,13 @@ export function RouteEditor({ open, existing, stops, onClose, onSaved }: RouteEd
       }),
       { sw: points[0], ne: points[0] }
     );
-    map.fitBounds([bounds.sw as [number, number], bounds.ne as [number, number]], {
-      padding: 48,
-      maxZoom: 16.5,
-      duration: 800,
-    });
+    map.fitBounds(
+      [
+        [bounds.sw[1], bounds.sw[0]] as [number, number],
+        [bounds.ne[1], bounds.ne[0]] as [number, number],
+      ],
+      { padding: 48, maxZoom: 16.5 }
+    );
   };
 
   const snap = async () => {

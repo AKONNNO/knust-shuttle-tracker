@@ -68,7 +68,6 @@ export function stopLabelIcon(name: string, selected: boolean) {
       '">' +
       esc(name) +
       "</span>",
-    iconSize: null as unknown as [number, number],
     iconAnchor: [0, 0],
   });
 }

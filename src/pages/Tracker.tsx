@@ -147,22 +147,15 @@ export default function Tracker() {
 
   function fitAll() {
     if (!map) return;
-    const coords = busesWithStops
+    const points = busesWithStops
       .map((b) => locations[b.id])
       .filter(Boolean)
-      .map((l) => [l!.lng, l!.lat] as [number, number]);
-    if (coords.length) {
-      const bounds = coords.reduce(
-        (acc, c) => ({
-          sw: [Math.min(acc.sw[0], c[0]), Math.min(acc.sw[1], c[1])] as [number, number],
-          ne: [Math.max(acc.ne[0], c[0]), Math.max(acc.ne[1], c[1])] as [number, number],
-        }),
-        { sw: coords[0], ne: coords[0] }
-      );
-      map.fitBounds([bounds.sw, bounds.ne], { padding: 64, maxZoom: 16.4, duration: 1200 });
+      .map((l) => [l!.lat, l!.lng] as [number, number]);
+    if (points.length) {
+      map.fitBounds(points, { padding: 64, maxZoom: 16.4 });
       return;
     }
-    map.flyTo({ center: [CAMPUS_CENTER.lng, CAMPUS_CENTER.lat], zoom: 15.2, duration: 1200 });
+    map.flyTo([CAMPUS_CENTER.lat, CAMPUS_CENTER.lng], 15.2);
   }
 
   const filteredBuses = useMemo(
@@ -243,7 +236,7 @@ export default function Tracker() {
               variant="ghost"
               className="h-9 w-9 rounded-xl"
               title="Reset view"
-              onClick={() => map?.flyTo({ center: [CAMPUS_CENTER.lng, CAMPUS_CENTER.lat], zoom: 15.2 })}
+              onClick={() => map?.flyTo([CAMPUS_CENTER.lat, CAMPUS_CENTER.lng], 15.2)}
             >
               <Compass className="h-4 w-4" />
             </Button>

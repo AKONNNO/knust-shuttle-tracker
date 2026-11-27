@@ -11,6 +11,9 @@ export { routeFeatures, stopFeatures } from "./sources";
 // Route geometry is kept here so the line widths can be refreshed when the
 // user zooms (Leaflet polylines have a fixed pixel weight per zoom level).
 const routeData = new WeakMap<L.Map, L.LatLng[][] & { colors: string[] }>();
+// Tracks maps that already have a zoomend listener bound, so re-calling
+// addRouteLayers (e.g. on route data changes) never stacks listeners.
+const zoomBound = new WeakSet<L.Map>();
 
 const ARROW_SPACING_M = 220;
 
@@ -18,7 +21,10 @@ const ARROW_SPACING_M = 220;
 export function addRouteLayers(map: L.Map) {
   groupFor(map, "routes");
   // Re-apply widths on zoom so routes stay readable like the old styling.
-  map.on("zoomend", () => rebuildRoutes(map));
+  if (!zoomBound.has(map)) {
+    zoomBound.add(map);
+    map.on("zoomend", () => rebuildRoutes(map));
+  }
 }
 
 /** Internal: rebuild the route layer group from stored geometry. */

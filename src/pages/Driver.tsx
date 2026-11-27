@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type * as maplibregl from "maplibre-gl";
+import type * as L from "leaflet";
 import {
   Bus as BusIcon,
   CirclePower,
@@ -61,7 +61,7 @@ export default function Driver() {
     refresh,
   } = useDriverSession();
 
-  const [map, setMap] = useState<maplibregl.Map | null>(null);
+  const [map, setMap] = useState<L.Map | null>(null);
   const [history, setHistory] = useState<HistoryTrip[]>([]);
   const [busy, setBusy] = useState<"start" | "end" | null>(null);
 
@@ -108,19 +108,6 @@ export default function Driver() {
         },
       ],
     });
-    if (!map.getLayer("me-dot")) {
-      map.addLayer({
-        id: "me-dot",
-        type: "circle",
-        source: "me-dot",
-        paint: {
-          "circle-radius": 9,
-          "circle-color": "#2F80ED",
-          "circle-stroke-color": "#FFFFFF",
-          "circle-stroke-width": 2.5,
-        },
-      });
-    }
   }, [map, position]);
 
   const avgSpeed = tripSeconds > 0 ? (cumulativeMeters / tripSeconds) * 3.6 : 0;

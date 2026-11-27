@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Bus, MapPin, Navigation, ShieldCheck, Clock, LoaderCircle } from "lucide-react";
+import { Bus, MapPin, Navigation, ShieldCheck, Clock, LoaderCircle, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { authUrls } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,7 @@ const FEATURES = [
 function AuthForm({ view }: { view: "sign_in" | "sign_up" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -45,7 +46,17 @@ function AuthForm({ view }: { view: "sign_in" | "sign_up" }) {
       if (err) {
         setError(err.message);
       } else if (!data.session) {
-        setNotice("Check your inbox to confirm your account, then sign in.");
+        // Email confirmation is off in the app: auto-confirm the account,
+        // then sign in so the user lands straight in the app.
+        const { error: confirmErr } = await supabase.functions.invoke("confirm-signup", {
+          body: { email, password },
+        });
+        if (confirmErr) {
+          setError("Account created, but couldn't confirm automatically. Please sign in.");
+        } else {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInErr) setError(signInErr.message);
+        }
       }
     }
     setBusy(false);
@@ -91,15 +102,26 @@ function AuthForm({ view }: { view: "sign_in" | "sign_up" }) {
             </button>
           )}
         </div>
-        <Input
-          id="password"
-          type="password"
-          autoComplete={isSignIn ? "current-password" : "new-password"}
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete={isSignIn ? "current-password" : "new-password"}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pr-10"
+            required
+          />
+          <button
+            type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            onClick={() => setShowPassword((s) => !s)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {notice && (

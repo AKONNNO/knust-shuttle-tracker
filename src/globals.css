@@ -133,3 +133,84 @@
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---------- Leaflet customizations ---------- */
+
+.leaflet-container {
+  font-family: inherit;
+  background: hsl(var(--background));
+  outline: none;
+}
+
+/* Scale inline SVG markers/arrows to their icon box */
+.sdbus-marker svg,
+.sdroute-arrow svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sdbus-marker {
+  filter: drop-shadow(0 3px 6px rgba(20, 60, 40, 0.35));
+}
+
+/* Route direction arrows sit just above the road casing */
+.sdroute-arrow {
+  pointer-events: none;
+}
+
+/* Stop label pills */
+.sdstop-label span {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: hsla(42, 42%, 99%, 0.92);
+  border: 1px solid hsla(40, 20%, 82%, 0.9);
+  color: hsl(150, 26%, 26%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(20, 60, 40, 0.15);
+  transform: translateY(-6px);
+}
+.sdstop-label span.is-selected {
+  color: hsl(33, 76%, 35%);
+  border-color: hsl(38, 95%, 58%);
+  background: hsla(42, 92%, 92%, 0.95);
+}
+
+/* Rounded, themed zoom control */
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -12px rgba(20, 60, 40, 0.5) !important;
+}
+.leaflet-control-zoom a {
+  border: none !important;
+  color: hsl(150, 26%, 20%) !important;
+  background: hsla(42, 42%, 99%, 0.92) !important;
+  backdrop-filter: blur(8px);
+  font-weight: 800;
+}
+.leaflet-control-zoom a:hover {
+  background: hsla(40, 24%, 89%, 0.95) !important;
+}
+.leaflet-control-attribution {
+  background: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 9px !important;
+  opacity: 0.75;
+}
+.leaflet-control-attribution a {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.leaflet-control-attribution,
+.leaflet-control-zoom {
+  border-radius: 10px;
+}
+.leaflet-control-attribution {
+  background: hsla(42, 42%, 99%, 0.6) !important;
+  border-radius: 8px;
+  padding: 0 6px;
+}

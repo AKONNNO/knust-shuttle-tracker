@@ -118,6 +118,12 @@ export function BusLayer({ map, locations, offline }: BusLayerProps) {
         }
         m.marker.setLatLng([pos.lat, pos.lng]);
         m.glow.setLatLng([pos.lat, pos.lng]);
+        // Elements are available once the marker is on the map; re-query in
+        // case they were not ready on first spawn.
+        if (!m.markerEl) m.markerEl = m.marker.getElement() ?? null;
+        if (!m.rotEl && m.markerEl) {
+          m.rotEl = m.markerEl.querySelector<HTMLElement>("[data-bus-rotate]") ?? null;
+        }
         if (m.rotEl) m.rotEl.style.transform = `rotate(${pos.heading}deg)`;
         if (m.markerEl) m.markerEl.style.opacity = pos.offline ? "0.45" : "1";
       }
