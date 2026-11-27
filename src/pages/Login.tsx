@@ -1,18 +1,131 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Auth } from "@supabase/auth-ui-react";
-import { ThemeSupa } from "@supabase/auth-ui-shared";
-import { Bus, MapPin, Navigation, ShieldCheck, Clock } from "lucide-react";
+import { Bus, MapPin, Navigation, ShieldCheck, Clock, LoaderCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { authUrls } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { roleHome } from "@/lib/roles";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const FEATURES = [
   { icon: MapPin, title: "Live campus map", text: "Every shuttle, every stop, right where you are." },
   { icon: Clock, title: "Arrival ETAs", text: "Know exactly when the next shuttle pulls in." },
   { icon: Navigation, title: "Nearest stop", text: "Walk straight to the closest pickup point." },
 ];
+
+function AuthForm({ view }: { view: "sign_in" | "sign_up" }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const { callback, reset } = authUrls(window.location.origin);
+  const isSignIn = view === "sign_in";
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+
+    if (isSignIn) {
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) setError(err.message);
+      // On success, useAuth picks up the session and routes by role.
+    } else {
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: callback },
+      });
+      if (err) {
+        setError(err.message);
+      } else if (!data.session) {
+        setNotice("Check your inbox to confirm your account, then sign in.");
+      }
+    }
+    setBusy(false);
+  };
+
+  const sendReset = async () => {
+    setError(null);
+    setNotice(null);
+    if (!email) {
+      setError("Enter your email address first.");
+      return;
+    }
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: reset });
+    if (err) setError(err.message);
+    else setNotice("Password reset link sent. Check your inbox.");
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="email">KNUST email or phone</Label>
+        <Input
+          id="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@st.knust.edu.gh"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="password">Password</Label>
+          {isSignIn && (
+            <button
+              type="button"
+              onClick={sendReset}
+              className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Forgot password?
+            </button>
+          )}
+        </div>
+        <Input
+          id="password"
+          type="password"
+          autoComplete={isSignIn ? "current-password" : "new-password"}
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+
+      {notice && (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</p>
+      )}
+
+      <Button type="submit" className="w-full font-semibold" disabled={busy}>
+        {busy ? (
+          <>
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+            {isSignIn ? "Signing in…" : "Creating account…"}
+          </>
+        ) : isSignIn ? (
+          "Sign in"
+        ) : (
+          "Create account"
+        )}
+      </Button>
+    </form>
+  );
+}
 
 export default function Login() {
   const { session, role, loading } = useAuth();
@@ -27,8 +140,6 @@ export default function Login() {
   if (!loading && session && role) {
     return <Navigate to={roleHome(role)} replace />;
   }
-
-  const redirectTo = new URL("/auth/callback", window.location.origin).href;
 
   return (
     <div className="min-h-dvh grid lg:grid-cols-2 bg-background">
@@ -124,44 +235,7 @@ export default function Login() {
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 shadow-[0_14px_40px_-18px_rgba(20,60,40,0.35)]">
-            <Auth
-              supabaseClient={supabase}
-              redirectTo={redirectTo}
-              providers={[]}
-              onlyThirdPartyProviders={false}
-              view={view}
-              appearance={{
-                theme: ThemeSupa,
-                variables: {
-                  default: {
-                    colors: {
-                      brand: "#107C41",
-                      brandAccent: "#0D6836",
-                      brandButtonText: "white",
-                      defaultButtonBackground: "white",
-                      defaultButtonBackgroundHover: "#F3F7F2",
-                      inputBackground: "#FBF9F3",
-                      inputText: "#17251D",
-                      inputBorder: "#E1D9C8",
-                      inputBorderHover: "#107C41",
-                      inputBorderFocus: "#107C41",
-                    },
-                    radii: { borderRadiusButton: "12px", buttonBorderRadius: "12px", inputBorderRadius: "12px" },
-                    space: { buttonPadding: "12px 16px", inputPadding: "12px 14px" },
-                  },
-                },
-                className: {
-                  button: "font-semibold text-sm",
-                  input: "text-sm",
-                },
-              }}
-              localization={{
-                variables: {
-                  sign_in: { email_label: "KNUST email or phone", password_label: "Password" },
-                  sign_in_password_label: "Password",
-                },
-              }}
-            />
+            <AuthForm view={view} />
           </div>
 
           {view === "sign_in" && (
