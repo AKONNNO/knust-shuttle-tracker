@@ -13,7 +13,7 @@ import {
 // rejects requests (like CARTO, which now requires an API key), we hop to the
 // next provider so the map never renders blank. Override with VITE_MAP_TILE_URL
 // to force a single source.
-const TILE_SOURCES = [
+const LIGHT_TILE_SOURCES = [
   {
     url: "https://tile.openfreemap.org/styles/liberty/{z}/{x}/{y}.png",
     attribution:
@@ -33,27 +33,65 @@ const TILE_SOURCES = [
   },
 ];
 
-function addBasemap(map: L.Map) {
+// Dark basemaps used whenever the user toggles the map into dark mode.
+const DARK_TILE_SOURCES = [
+  {
+    url: "https://tile.openfreemap.org/styles/dark-matter/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
+    maxZoom: 20,
+  },
+  {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar",
+    maxZoom: 19,
+  },
+];
+
+/** Basemap display mode: light (default) or dark tiles. */
+export type MapMode = "light" | "dark";
+
+interface BasemapState {
+  mode: MapMode | null;
+  layer: L.TileLayer | null;
+  failures: number;
+  index: number;
+}
+
+const basemapState = new WeakMap<L.Map, BasemapState>();
+
+/** Swap (or set) the basemap tileset for the given display mode. */
+function setBasemap(map: L.Map, mode: MapMode) {
+  let state = basemapState.get(map);
+  if (!state) {
+    state = { mode: null, layer: null, failures: 0, index: 0 };
+    basemapState.set(map, state);
+  }
+  if (state.mode === mode) return;
+
+  state.mode = mode;
+  state.failures = 0;
+  state.index = 0;
+
   const override = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
   const sources = override
     ? [{ url: override, attribution: "Tiles", maxZoom: 20 }]
-    : TILE_SOURCES;
-
-  let index = 0;
-  let failures = 0;
-  let layer: L.TileLayer | null = null;
+    : mode === "dark"
+      ? DARK_TILE_SOURCES
+      : LIGHT_TILE_SOURCES;
 
   const apply = () => {
-    layer?.remove();
-    const src = sources[index];
-    layer = L.tileLayer(src.url, { attribution: src.attribution, maxZoom: src.maxZoom });
+    state.layer?.remove();
+    const src = sources[state.index];
+    const layer = L.tileLayer(src.url, { attribution: src.attribution, maxZoom: src.maxZoom });
+    state.layer = layer;
     layer.on("tileerror", () => {
-      failures += 1;
+      state.failures += 1;
       // A whole tileset from one host usually dies together, so after a few
       // failures hop to the next provider instead of showing a blank map.
-      if (failures >= 3 && index < sources.length - 1) {
-        failures = 0;
-        index += 1;
+      if (state.failures >= 3 && state.index < sources.length - 1) {
+        state.failures = 0;
+        state.index += 1;
         apply();
       }
     });
@@ -73,9 +111,18 @@ interface CampusMapProps {
   className?: string;
   dragRotate?: boolean;
   cursor?: string;
+  /** Basemap style: "light" (default) or "dark". Switching swaps the tiles. */
+  basemap?: MapMode;
 }
 
-export function CampusMap({ onReady, onClick, center, className, cursor = "default" }: CampusMapProps) {
+export function CampusMap({
+  onReady,
+  onClick,
+  center,
+  className,
+  cursor = "default",
+  basemap = "light",
+}: CampusMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -109,8 +156,6 @@ export function CampusMap({ onReady, onClick, center, className, cursor = "defau
     });
     mapRef.current = map;
 
-    addBasemap(map);
-
     L.control.zoom({ position: "topright" }).addTo(map);
 
     const el = map.getContainer();
@@ -139,6 +184,16 @@ export function CampusMap({ onReady, onClick, center, className, cursor = "defau
     const el = mapRef.current?.getContainer();
     if (el) el.style.cursor = cursor;
   }, [cursor]);
+
+  // Apply the requested basemap — swaps the tiles and toggles the dark
+  // overlay styling class. Runs on mount once the map exists and again
+  // whenever the mode prop changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    setBasemap(map, basemap);
+    map.getContainer().classList.toggle("map-mode-dark", basemap === "dark");
+  }, [basemap]);
 
   const firstCenter = useRef(center);
   useEffect(() => {

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as L from "leaflet";
-import { Compass, Crosshair, Bus as BusIcon, Route, LoaderCircle } from "lucide-react";
+import { Compass, Crosshair, Bus as BusIcon, Route, LoaderCircle, Moon, Sun } from "lucide-react";
 import { useLiveBuses } from "@/hooks/useLiveBuses";
 import { useRoutes } from "@/hooks/useRoutes";
 import { useStops } from "@/hooks/useStops";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useCommentCounts } from "@/hooks/useCommentCounts";
-import { CampusMap } from "@/components/map/CampusMap";
+import { CampusMap, type MapMode } from "@/components/map/CampusMap";
 import { BusLayer } from "@/components/map/BusLayer";
 import { addRouteLayers, addStopLayers, updateRoutes, updateStops } from "@/components/map/mapLayers";
 import { addOrUpdateSource, routeFeatures } from "@/components/map/sources";
@@ -78,7 +78,15 @@ export default function Tracker() {
   const [selectedBus, setSelectedBus] = useState<string | null>(null);
   const [selectedStop, setSelectedStop] = useState<string | null>(null);
   const [fitRequested, setFitRequested] = useState(0);
+  const [mapMode, setMapMode] = useState<MapMode>(() =>
+    localStorage.getItem("map-mode") === "dark" ? "dark" : "light"
+  );
   const boundsAppliedRef = useRef(false);
+
+  // Remember the user's preferred map look across visits.
+  useEffect(() => {
+    localStorage.setItem("map-mode", mapMode);
+  }, [mapMode]);
 
   const colorFor = useMemo(() => {
     const m: Record<string, string> = {};
@@ -286,7 +294,7 @@ export default function Tracker() {
       <div className="lg:grid lg:grid-cols-[1fr_384px] lg:gap-4 items-start">
         {/* Map */}
         <div className="relative h-[56dvh] lg:h-[calc(100dvh-15rem)] lg:sticky lg:top-20 rounded-[1.5rem] overflow-hidden border border-border/60 shadow-[0_10px_45px_-18px_rgba(20,60,40,0.4)] bg-card">
-          <CampusMap onReady={setMap} className="h-full w-full" dragRotate />
+          <CampusMap onReady={setMap} className="h-full w-full" dragRotate basemap={mapMode} />
 
           {/* Live bus markers (interpolated + heading-aware) */}
           {map && <BusLayer map={map} locations={locations} offline={offline} />}
@@ -294,6 +302,15 @@ export default function Tracker() {
           {/* Controls */}
         <div className="absolute bottom-2.5 right-2.5 z-10 flex flex-col gap-1.5">
           <div className="glass rounded-2xl p-1.5 flex flex-col gap-1.5">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 rounded-xl"
+              title={mapMode === "dark" ? "Switch to light map" : "Switch to dark map"}
+              onClick={() => setMapMode((m) => (m === "dark" ? "light" : "dark"))}
+            >
+              {mapMode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button size="icon" variant="ghost" className="h-9 w-9 rounded-xl" title="Fit all buses"
               onClick={fitAll}>
               <Crosshair className="h-4 w-4" />

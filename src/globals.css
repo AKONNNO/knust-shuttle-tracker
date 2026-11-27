@@ -228,3 +228,40 @@
   border-radius: 8px;
   padding: 0 6px;
 }
+
+/* ---------- Dark basemap mode ---------- */
+
+/* Map sheet background while dark tiles load */
+.map-mode-dark.leaflet-container {
+  background: hsl(150, 22%, 9%);
+}
+
+/* Stop label pills restyled for dark tiles */
+.map-mode-dark .sdstop-label span {
+  background: hsla(150, 18%, 12%, 0.92);
+  border: 1px solid hsla(150, 12%, 26%, 0.9);
+  color: hsl(40, 40%, 94%);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+}
+.map-mode-dark .sdstop-label span.is-selected {
+  color: hsl(38, 90%, 62%);
+  border-color: hsl(38, 90%, 55%);
+  background: hsla(150, 18%, 16%, 0.95);
+  box-shadow: 0 2px 10px rgba(232, 163, 61, 0.35);
+}
+
+/* Zoom control + attribution in dark mode */
+.map-mode-dark .leaflet-control-zoom a {
+  color: hsl(40, 40%, 94%) !important;
+  background: hsla(150, 18%, 12%, 0.92) !important;
+}
+.map-mode-dark .leaflet-control-zoom a:hover {
+  background: hsla(150, 12%, 20%, 0.95) !important;
+}
+.map-mode-dark .leaflet-control-attribution {
+  background: hsla(150, 18%, 12%, 0.72) !important;
+  color: hsl(40, 18%, 68%) !important;
+}
+.map-mode-dark .leaflet-control-attribution a {
+  color: hsl(40, 18%, 68%) !important;
+}
