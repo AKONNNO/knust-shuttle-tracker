@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { edgeErrorMessage } from "@/lib/edgeErrors";
 import { useAuth } from "@/hooks/useAuth";
 import { ROLE_BADGE, ROLE_LABELS } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export function DriversTab() {
   const load = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke("list-users", {});
     if (error) {
-      toast.error(error.message ?? "Could not load users.");
+      toast.error(await edgeErrorMessage(error, "Could not load users."));
     } else {
       setUsers((data?.users ?? []) as ManagedUser[]);
     }
@@ -69,16 +70,24 @@ export function DriversTab() {
 
   const createDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || !password) {
+    const name = fullName.trim();
+    const mail = email.trim();
+    if (!name || !mail || !password) {
       return toast.error("Name, email and password are required.");
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+      return toast.error("Please enter a valid email address.");
+    }
+    if (password.length < 6) {
+      return toast.error("Temporary password must be at least 6 characters.");
     }
     setCreating(true);
     const { data, error } = await supabase.functions.invoke("create-driver", {
-      body: { full_name: fullName.trim(), email: email.trim(), password },
+      body: { full_name: name, email: mail, password },
     });
     setCreating(false);
     if (error) {
-      toast.error(error.message ?? "Could not create the driver.");
+      toast.error(await edgeErrorMessage(error, "Could not create the driver."));
       return;
     }
     toast.success(`${data?.email ?? "New driver"} added with the Driver role.`);
@@ -93,7 +102,8 @@ export function DriversTab() {
     const { error } = await supabase.functions.invoke("set-role", {
       body: { user_id: user.id, role },
     });
-    if (error) return toast.error(error.message ?? "Could not update role.");
+    if (error)
+      return toast.error(await edgeErrorMessage(error, "Could not update role."));
     toast.success(`Set ${user.full_name || user.email} to ${ROLE_LABELS[role]}.`);
     await load();
   };

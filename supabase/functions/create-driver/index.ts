@@ -77,10 +77,17 @@ serve(async (req) => {
     });
     if (createErr) {
       console.error("[create-driver] createUser failed", { error: createErr.message });
-      return new Response(JSON.stringify({ error: createErr.message }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+      const duplicate =
+        (createErr as { code?: string }).code === "email_exists" ||
+        /already (been )?registered/i.test(createErr.message);
+      return new Response(
+        JSON.stringify({
+          error: duplicate
+            ? "This email already has an account. Use 'Reset password' for that user, or promote the existing account to Driver from the role menu."
+            : createErr.message,
+        }),
+        { status: duplicate ? 409 : 400, headers: corsHeaders }
+      );
     }
 
     // The handle_new_user trigger creates the profile as 'student'; promote to driver.
